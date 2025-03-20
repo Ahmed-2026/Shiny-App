@@ -1,0 +1,12 @@
+name: Shiny-App
+title: Shiny-App
+username: ahmedahmed
+account: ahmedahmed
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 14291862
+bundleId: 9973462
+url: https://ahmedahmed.shinyapps.io/Shiny-App/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE

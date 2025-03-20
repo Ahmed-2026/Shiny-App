@@ -21,6 +21,7 @@ ui <- dashboardPage(
   dashboardSidebar(
     sidebarMenu(
       menuItem("Variants", tabName = "variants_tab", icon = icon("dna")),
+      menuItem("Patient Mutations", tabName = "patient_tab", icon = icon("user")),
       menuItem("Single-Cell", tabName = "singlecell_tab", icon = icon("microscope"))
     )
   ),
@@ -56,6 +57,27 @@ ui <- dashboardPage(
         )
       ),
       
+      # Patient Mutations Tab
+      tabItem(
+        tabName = "patient_tab",
+        h2("Patient Mutations"),
+        fluidRow(
+          column(4,
+                 selectizeInput("patient", "Select Patient:", choices = NULL, options = list(
+                   placeholder = 'Please select a patient',
+                   onInitialize = I('function() { this.setValue(""); }')
+                 )),
+                 downloadButton("download_patient_data", "Download Patient Data")
+          ),
+          column(8,
+                 tabsetPanel(
+                   tabPanel("Mutations Table", DTOutput("patient_mutations_table")),
+                   tabPanel("Summary", verbatimTextOutput("patient_summary_stats"))
+                 )
+          )
+        )
+      ),
+      
       # Single-Cell Tab
       tabItem(
         tabName = "singlecell_tab",
@@ -73,7 +95,7 @@ ui <- dashboardPage(
                  selectInput("plot_type", "Plot Type:",
                              choices = c("DimPlot", "NebulosaPlot", "ViolinPlot", "DotPlot", "GeyserPlot"),
                              selected = "DimPlot"),
-                 uiOutput("feature_select") # Add UI for feature selection
+                 uiOutput("feature_select")
           ),
           column(8,
                  plotOutput("plot", height = "600px")
@@ -225,6 +247,41 @@ server <- function(input, output, session) {
     }
   )
   
+  # Patient Mutations Logic
+  observe({
+    req(data())
+    patient_choices <- unique(data()$Tumor_Sample_Barcode)
+    updateSelectizeInput(session, "patient", choices = patient_choices, server = TRUE)
+  })
+  
+  patient_mutations <- reactive({
+    req(input$patient, data())
+    data() %>% filter(Tumor_Sample_Barcode == input$patient)
+  })
+  
+  output$patient_mutations_table <- renderDT({
+    req(patient_mutations())
+    datatable(patient_mutations(), options = list(pageLength = 10))
+  })
+  
+  output$patient_summary_stats <- renderPrint({
+    req(patient_mutations())
+    cat("Summary Statistics for Patient:", input$patient, "\n\n")
+    cat("Total Mutations:", nrow(patient_mutations()), "\n")
+    cat("Unique Genes:", length(unique(patient_mutations()$Hugo_Symbol)), "\n")
+    cat("\nMutations by Type:\n")
+    print(table(patient_mutations()$Variant_Classification))
+  })
+  
+  output$download_patient_data <- downloadHandler(
+    filename = function() {
+      paste(input$patient, "_mutations_", Sys.Date(), ".csv", sep = "")
+    },
+    content = function(file) {
+      write.csv(patient_mutations(), file, row.names = FALSE)
+    }
+  )
+  
   # Single-cell Logic
   # Load single-cell data
   seurat_object <- reactive({
@@ -372,3 +429,4 @@ server <- function(input, output, session) {
 
 # Run the Shiny app
 shinyApp(ui = ui, server = server)
+
