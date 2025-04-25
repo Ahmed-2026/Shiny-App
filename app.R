@@ -77,12 +77,12 @@ server <- function(input, output, session) {
     session = session,
     filePath = variants_file_path,
     readFunc = function(filePath) {
-      # Skip 0 lines if there are no metadata lines; adjust skip if needed!
       df <- read.delim(filePath, sep = "\t", skip = 0, stringsAsFactors = FALSE)
       validate(need("Hugo_Symbol" %in% colnames(df), "CRITICAL ERROR: Missing Hugo_Symbol column"))
       df %>%
         filter(!Hugo_Symbol %in% blacklisted_genes) %>%
         mutate(
+          Tumor_Sample_Barcode = gsub("_tumor", "", Tumor_Sample_Barcode),
           AA_Position = sapply(Protein_Change, function(x) {
             if(is.na(x)) return(0)
             pos <- as.numeric(gsub(".*?([0-9]+).*", "\\1", x))
